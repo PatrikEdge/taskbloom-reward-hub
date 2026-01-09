@@ -14,7 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          available_balance: number
+          created_at: string
+          email: string | null
+          id: string
+          invite_code: string
+          invited_by: string | null
+          level: number
+          locked_deposit: number
+          today_commission: number
+          total_balance: number
+          total_commission: number
+          total_revenue: number
+          total_withdrawal: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available_balance?: number
+          created_at?: string
+          email?: string | null
+          id?: string
+          invite_code?: string
+          invited_by?: string | null
+          level?: number
+          locked_deposit?: number
+          today_commission?: number
+          total_balance?: number
+          total_commission?: number
+          total_revenue?: number
+          total_withdrawal?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available_balance?: number
+          created_at?: string
+          email?: string | null
+          id?: string
+          invite_code?: string
+          invited_by?: string | null
+          level?: number
+          locked_deposit?: number
+          today_commission?: number
+          total_balance?: number
+          total_commission?: number
+          total_revenue?: number
+          total_withdrawal?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_completions: {
+        Row: {
+          completed_at: string
+          created_at: string
+          earnings: number
+          id: string
+          tasks_completed: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          created_at?: string
+          earnings?: number
+          id?: string
+          tasks_completed?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          earnings?: number
+          id?: string
+          tasks_completed?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
