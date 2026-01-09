@@ -1,10 +1,21 @@
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/dashboard/Header";
 import BalanceCard from "@/components/dashboard/BalanceCard";
-import MenuSection from "@/components/dashboard/MenuSection";
 import BottomNav from "@/components/dashboard/BottomNav";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 
 const Profile = () => {
+  const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
   return (
     <div className="min-h-screen bg-background max-w-md mx-auto relative overflow-hidden">
       {/* Background gradient effects */}
@@ -40,15 +51,31 @@ const Profile = () => {
       <div className="relative z-10">
         <Header />
         <BalanceCard
-          totalBalance={238.18}
-          availableBalance={168.18}
-          lockedDeposit={880.0}
-          todayCommission={28}
-          totalCommission={953}
-          totalWithdrawal={1086}
-          totalRevenue={1263.18}
+          totalBalance={profile?.total_balance ?? 0}
+          availableBalance={profile?.available_balance ?? 0}
+          lockedDeposit={profile?.locked_deposit ?? 0}
+          todayCommission={profile?.today_commission ?? 0}
+          totalCommission={profile?.total_commission ?? 0}
+          totalWithdrawal={profile?.total_withdrawal ?? 0}
+          totalRevenue={profile?.total_revenue ?? 0}
         />
-        <MenuSection />
+        
+        {/* Logout button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="mx-4 mb-24"
+        >
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleSignOut}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Kijelentkezés
+          </Button>
+        </motion.div>
       </div>
 
       <BottomNav />
