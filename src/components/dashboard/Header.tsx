@@ -1,36 +1,43 @@
-import { Bell, Copy } from "lucide-react";
+import { Bell, Copy, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { getLevelConfig } from "@/lib/levelConfig";
 
 const Header = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [countdown, setCountdown] = useState({
-    days: 219,
-    hours: 7,
-    minutes: 54,
+    days: 365,
+    hours: 0,
+    minutes: 0,
   });
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        let { days, hours, minutes } = prev;
-        minutes--;
-        if (minutes < 0) {
-          minutes = 59;
-          hours--;
+    // Calculate countdown from contract start date (1 year)
+    if (profile?.contract_start_date) {
+      const startDate = new Date(profile.contract_start_date);
+      const endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      
+      const updateCountdown = () => {
+        const now = new Date();
+        const diff = endDate.getTime() - now.getTime();
+        
+        if (diff > 0) {
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          setCountdown({ days, hours, minutes });
         }
-        if (hours < 0) {
-          hours = 23;
-          days--;
-        }
-        return { days, hours, minutes };
-      });
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
+      };
+      
+      updateCountdown();
+      const timer = setInterval(updateCountdown, 60000);
+      return () => clearInterval(timer);
+    }
+  }, [profile?.contract_start_date]);
 
   const copyInviteCode = () => {
     if (profile?.invite_code) {
@@ -42,9 +49,9 @@ const Header = () => {
     }
   };
 
-  const getLevelName = (level: number) => {
-    return `Lv.${level}`;
-  };
+  const userLevel = profile?.level ?? 0;
+  const isVip = profile?.is_vip ?? false;
+  const levelConfig = getLevelConfig(userLevel, isVip);
 
   const getInitials = (email: string | null | undefined) => {
     if (!email) return "??";
@@ -92,8 +99,9 @@ const Header = () => {
                 </span>
               </div>
             </div>
-            <div className="absolute -bottom-1 -right-1 px-1.5 py-0.5 bg-profit rounded text-[10px] font-bold text-accent-foreground">
-              {getLevelName(profile?.level ?? 1)}
+            <div className="absolute -bottom-1 -right-1 px-1.5 py-0.5 bg-profit rounded text-[10px] font-bold text-accent-foreground flex items-center gap-0.5">
+              {isVip && <Crown className="w-2.5 h-2.5" />}
+              {levelConfig.name}
             </div>
           </div>
 
@@ -103,7 +111,10 @@ const Header = () => {
                 {profile?.email ?? "Betöltés..."}
               </span>
               <span className="text-muted-foreground">→</span>
-              <span className="text-profit font-semibold">{getLevelName(profile?.level ?? 1)}</span>
+              <span className={`font-semibold flex items-center gap-1 ${isVip ? "text-amber-400" : "text-profit"}`}>
+                {isVip && <Crown className="w-3 h-3" />}
+                {levelConfig.name}
+              </span>
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm text-muted-foreground">Meghívó kód:</span>

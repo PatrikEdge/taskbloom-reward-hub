@@ -17,12 +17,17 @@ export type Database = {
       profiles: {
         Row: {
           available_balance: number
+          contract_start_date: string | null
           created_at: string
           email: string | null
           id: string
           invite_code: string
           invited_by: string | null
+          is_vip: boolean
           level: number
+          level1_commission: number
+          level2_commission: number
+          level3_commission: number
           locked_deposit: number
           today_commission: number
           total_balance: number
@@ -34,12 +39,17 @@ export type Database = {
         }
         Insert: {
           available_balance?: number
+          contract_start_date?: string | null
           created_at?: string
           email?: string | null
           id?: string
           invite_code?: string
           invited_by?: string | null
+          is_vip?: boolean
           level?: number
+          level1_commission?: number
+          level2_commission?: number
+          level3_commission?: number
           locked_deposit?: number
           today_commission?: number
           total_balance?: number
@@ -51,12 +61,17 @@ export type Database = {
         }
         Update: {
           available_balance?: number
+          contract_start_date?: string | null
           created_at?: string
           email?: string | null
           id?: string
           invite_code?: string
           invited_by?: string | null
+          is_vip?: boolean
           level?: number
+          level1_commission?: number
+          level2_commission?: number
+          level3_commission?: number
           locked_deposit?: number
           today_commission?: number
           total_balance?: number
@@ -108,7 +123,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_vip_eligibility: { Args: { _user_id: string }; Returns: boolean }
+      count_team_at_level: {
+        Args: { _level: number; _profile_id: string }
+        Returns: number
+      }
+      distribute_team_commission: {
+        Args: { _task_earnings: number; _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
