@@ -9,13 +9,18 @@ interface Profile {
   invite_code: string;
   invited_by: string | null;
   level: number;
+  is_vip: boolean;
   total_balance: number;
   available_balance: number;
   locked_deposit: number;
   today_commission: number;
   total_commission: number;
+  level1_commission: number;
+  level2_commission: number;
+  level3_commission: number;
   total_withdrawal: number;
   total_revenue: number;
+  contract_start_date: string | null;
   created_at: string;
   updated_at: string;
 }
