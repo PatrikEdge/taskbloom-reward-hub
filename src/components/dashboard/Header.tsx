@@ -105,13 +105,13 @@ const Header = () => {
             </div>
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-lg font-semibold text-foreground truncate max-w-[140px]">
-                {profile?.email ?? "Betöltés..."}
+                {profile?.email || "Betöltés..."}
               </span>
               <span className="text-muted-foreground">→</span>
-              <span className={`font-semibold flex items-center gap-1 ${isVip ? "text-amber-400" : "text-profit"}`}>
+              <span className={`font-semibold flex items-center gap-1 flex-shrink-0 ${isVip ? "text-amber-400" : "text-profit"}`}>
                 {isVip && <Crown className="w-3 h-3" />}
                 {levelConfig.name}
               </span>
@@ -119,16 +119,18 @@ const Header = () => {
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm text-muted-foreground">Meghívó kód:</span>
               <span className="text-sm text-foreground font-mono">
-                {profile?.invite_code ?? "..."}
+                {profile?.invite_code || "Betöltés..."}
               </span>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={copyInviteCode}
-                className="p-1 hover:bg-secondary rounded"
-              >
-                <Copy className="w-3.5 h-3.5 text-cyan-glow" />
-              </motion.button>
+              {profile?.invite_code && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={copyInviteCode}
+                  className="p-1 hover:bg-secondary rounded"
+                >
+                  <Copy className="w-3.5 h-3.5 text-cyan-glow" />
+                </motion.button>
+              )}
             </div>
           </div>
         </div>

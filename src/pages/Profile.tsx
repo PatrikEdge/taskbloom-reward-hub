@@ -5,11 +5,28 @@ import BottomNav from "@/components/dashboard/BottomNav";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, ArrowDownCircle, ArrowUpCircle, Shield } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Profile = () => {
-  const { profile, signOut } = useAuth();
+  const { profile, user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      setIsAdmin(!!data);
+    };
+    checkAdmin();
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -48,7 +65,7 @@ const Profile = () => {
       </div>
 
       {/* Content */}
-      <div className="relative z-10">
+      <div className="relative z-10 pb-24">
         <Header />
         <BalanceCard
           totalBalance={profile?.total_balance ?? 0}
@@ -60,12 +77,54 @@ const Profile = () => {
           totalRevenue={profile?.total_revenue ?? 0}
         />
         
+        {/* Action buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="mx-4 mb-4 grid grid-cols-2 gap-3"
+        >
+          <Button
+            onClick={() => navigate("/deposit")}
+            className="bg-gradient-to-r from-primary to-cyan-400 text-primary-foreground font-bold py-6"
+          >
+            <ArrowDownCircle className="w-5 h-5 mr-2" />
+            Befizetés
+          </Button>
+          <Button
+            onClick={() => navigate("/withdraw")}
+            className="bg-gradient-to-r from-profit to-green-400 text-primary-foreground font-bold py-6"
+          >
+            <ArrowUpCircle className="w-5 h-5 mr-2" />
+            Kivétel
+          </Button>
+        </motion.div>
+
+        {/* Admin button */}
+        {isAdmin && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.5 }}
+            className="mx-4 mb-4"
+          >
+            <Button
+              variant="outline"
+              className="w-full border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+              onClick={() => navigate("/admin")}
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              Admin Panel
+            </Button>
+          </motion.div>
+        )}
+        
         {/* Logout button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.5 }}
-          className="mx-4 mb-24"
+          className="mx-4"
         >
           <Button
             variant="outline"

@@ -56,78 +56,88 @@ const Tasks = () => {
 
   useEffect(() => {
     if (!isWorking) return;
+    
+    let progressValue = 0;
     const brandInterval = setInterval(
       () => setCurrentBrandIndex((p) => (p + 1) % brands.length),
       1500
     );
+    
     const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          clearInterval(brandInterval);
-          completeTask();
-          return 100;
-        }
-        return prev + 6.67; // ~15 seconds
-      });
+      progressValue += 6.67;
+      setProgress(progressValue);
+      
+      if (progressValue >= 100) {
+        clearInterval(progressInterval);
+        clearInterval(brandInterval);
+        setIsWorking(false);
+        setProgress(0);
+        // Complete task after animation
+        handleCompleteTask();
+      }
     }, 1000);
+    
     return () => {
       clearInterval(brandInterval);
       clearInterval(progressInterval);
     };
   }, [isWorking]);
 
-  const completeTask = async () => {
+  const handleCompleteTask = async () => {
     if (!profile?.user_id) return;
-    const today = new Date().toISOString().split("T")[0];
-    const newCompleted = completedToday + 1;
-    const newEarnings = todayEarnings + rewardPerTask;
+    
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const newCompleted = completedToday + 1;
+      const newEarnings = todayEarnings + rewardPerTask;
 
-    // Update task_completions
-    const { data: existing } = await supabase
-      .from("task_completions")
-      .select("id")
-      .eq("user_id", profile.user_id)
-      .eq("completed_at", today)
-      .maybeSingle();
-
-    if (existing) {
-      await supabase
+      // Update task_completions
+      const { data: existing } = await supabase
         .from("task_completions")
-        .update({ tasks_completed: newCompleted, earnings: newEarnings })
-        .eq("id", existing.id);
-    } else {
-      await supabase.from("task_completions").insert({
-        user_id: profile.user_id,
-        completed_at: today,
-        tasks_completed: newCompleted,
-        earnings: newEarnings,
+        .select("id")
+        .eq("user_id", profile.user_id)
+        .eq("completed_at", today)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from("task_completions")
+          .update({ tasks_completed: newCompleted, earnings: newEarnings })
+          .eq("id", existing.id);
+      } else {
+        await supabase.from("task_completions").insert({
+          user_id: profile.user_id,
+          completed_at: today,
+          tasks_completed: newCompleted,
+          earnings: newEarnings,
+        });
+      }
+
+      // Update user profile balances
+      await supabase
+        .from("profiles")
+        .update({
+          available_balance: (profile.available_balance ?? 0) + rewardPerTask,
+          total_balance: (profile.total_balance ?? 0) + rewardPerTask,
+          today_commission: (profile.today_commission ?? 0) + rewardPerTask,
+          total_revenue: (profile.total_revenue ?? 0) + rewardPerTask,
+        })
+        .eq("user_id", profile.user_id);
+
+      // Distribute team commissions using the database function
+      await supabase.rpc("distribute_team_commission", {
+        _user_id: profile.user_id,
+        _task_earnings: rewardPerTask,
       });
+
+      setCompletedToday(newCompleted);
+      setTodayEarnings(newEarnings);
+      await refreshProfile();
+      toast({ title: "Feladat kész!", description: `+${rewardPerTask.toFixed(2)} USDT` });
+    } catch (error) {
+      console.error("Task completion error:", error);
+      toast({ title: "Hiba történt", variant: "destructive" });
     }
-
-    // Update user profile balances
-    await supabase
-      .from("profiles")
-      .update({
-        available_balance: (profile.available_balance ?? 0) + rewardPerTask,
-        total_balance: (profile.total_balance ?? 0) + rewardPerTask,
-        today_commission: (profile.today_commission ?? 0) + rewardPerTask,
-        total_revenue: (profile.total_revenue ?? 0) + rewardPerTask,
-      })
-      .eq("user_id", profile.user_id);
-
-    // Distribute team commissions using the database function
-    await supabase.rpc("distribute_team_commission", {
-      _user_id: profile.user_id,
-      _task_earnings: rewardPerTask,
-    });
-
-    setCompletedToday(newCompleted);
-    setTodayEarnings(newEarnings);
-    setIsWorking(false);
-    setProgress(0);
-    await refreshProfile();
-    toast({ title: "Feladat kész!", description: `+${rewardPerTask.toFixed(2)} USDT` });
   };
 
   const handleStartWork = () => {
