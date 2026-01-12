@@ -118,6 +118,63 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          processed_at: string | null
+          processed_by: string | null
+          status: string
+          type: string
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          type: string
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          type?: string
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -132,9 +189,24 @@ export type Database = {
         Args: { _task_earnings: number; _user_id: string }
         Returns: undefined
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      process_deposit: {
+        Args: { _approved: boolean; _transaction_id: string }
+        Returns: undefined
+      }
+      process_withdrawal: {
+        Args: { _approved: boolean; _transaction_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -261,6 +333,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
