@@ -1,13 +1,22 @@
 import { motion } from "framer-motion";
-import { ChevronLeft, Wallet, AlertCircle } from "lucide-react";
+import { ChevronLeft, Wallet, AlertCircle, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/dashboard/BottomNav";
+
+interface Transaction {
+  id: string;
+  type: string;
+  amount: number;
+  status: string;
+  wallet_address: string;
+  created_at: string;
+}
 
 const MIN_WITHDRAWAL = 20;
 
@@ -18,8 +27,45 @@ const Withdraw = () => {
   const [amount, setAmount] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
   const [loading, setLoading] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   const availableBalance = profile?.available_balance ?? 0;
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (!profile?.user_id) return;
+      const { data } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", profile.user_id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (data) setTransactions(data);
+    };
+    fetchTransactions();
+  }, [profile?.user_id]);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "approved":
+        return <CheckCircle className="w-4 h-4 text-profit" />;
+      case "rejected":
+        return <XCircle className="w-4 h-4 text-destructive" />;
+      default:
+        return <Clock className="w-4 h-4 text-amber-400" />;
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "approved":
+        return "Jóváhagyva";
+      case "rejected":
+        return "Elutasítva";
+      default:
+        return "Függőben";
+    }
+  };
 
   const handleWithdraw = async () => {
     if (!profile?.user_id) return;
@@ -185,6 +231,36 @@ const Withdraw = () => {
         >
           {loading ? "Feldolgozás..." : "Kivétel kérelem"}
         </Button>
+
+        {/* Transaction History */}
+        {transactions.length > 0 && (
+          <div className="glass-card p-4 mt-6">
+            <h3 className="font-semibold mb-4">Tranzakció előzmények</h3>
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {transactions.map((tx) => (
+                <div key={tx.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {getStatusIcon(tx.status)}
+                    <div>
+                      <p className="text-sm font-medium">
+                        {tx.type === "deposit" ? "Befizetés" : "Kivétel"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(tx.created_at).toLocaleDateString("hu-HU")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-semibold ${tx.type === "deposit" ? "text-profit" : "text-foreground"}`}>
+                      {tx.type === "deposit" ? "+" : "-"}${tx.amount.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{getStatusText(tx.status)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </motion.div>
 
       <BottomNav />

@@ -116,18 +116,26 @@ const Tasks = () => {
         if (insertError) throw insertError;
       }
 
-      // Update user profile balances
-      const { error: profileError } = await supabase
+      // Update user profile balances using RPC to avoid stale data issues
+      const { data: latestProfile } = await supabase
         .from("profiles")
-        .update({
-          available_balance: (currentProfile.available_balance ?? 0) + reward,
-          total_balance: (currentProfile.total_balance ?? 0) + reward,
-          today_commission: (currentProfile.today_commission ?? 0) + reward,
-          total_revenue: (currentProfile.total_revenue ?? 0) + reward,
-        })
-        .eq("user_id", currentProfile.user_id);
+        .select("available_balance, total_balance, today_commission, total_revenue")
+        .eq("user_id", currentProfile.user_id)
+        .single();
       
-      if (profileError) throw profileError;
+      if (latestProfile) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            available_balance: (latestProfile.available_balance ?? 0) + reward,
+            total_balance: (latestProfile.total_balance ?? 0) + reward,
+            today_commission: (latestProfile.today_commission ?? 0) + reward,
+            total_revenue: (latestProfile.total_revenue ?? 0) + reward,
+          })
+          .eq("user_id", currentProfile.user_id);
+        
+        if (profileError) throw profileError;
+      }
 
       // Distribute team commissions using the database function
       await supabase.rpc("distribute_team_commission", {
