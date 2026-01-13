@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Play, CheckCircle, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/components/dashboard/BottomNav";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,7 @@ const Tasks = () => {
   const [progress, setProgress] = useState(0);
   const [completedToday, setCompletedToday] = useState(0);
   const [todayEarnings, setTodayEarnings] = useState(0);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const userLevel = profile?.level ?? 0;
   const isVip = profile?.is_vip ?? false;
@@ -35,6 +36,28 @@ const Tasks = () => {
   const maxTasks = getMaxTasks(userLevel, isVip);
   const rewardPerTask = getRewardPerTask(userLevel, isVip);
   const weekend = isWeekend();
+
+  // Use refs to store latest values for the callback
+  const completedTodayRef = useRef(completedToday);
+  const todayEarningsRef = useRef(todayEarnings);
+  const profileRef = useRef(profile);
+  const rewardPerTaskRef = useRef(rewardPerTask);
+
+  useEffect(() => {
+    completedTodayRef.current = completedToday;
+  }, [completedToday]);
+
+  useEffect(() => {
+    todayEarningsRef.current = todayEarnings;
+  }, [todayEarnings]);
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
+
+  useEffect(() => {
+    rewardPerTaskRef.current = rewardPerTask;
+  }, [rewardPerTask]);
 
   useEffect(() => {
     const fetchTodayStats = async () => {
@@ -53,6 +76,76 @@ const Tasks = () => {
     };
     fetchTodayStats();
   }, [profile?.user_id]);
+
+  const handleCompleteTask = useCallback(async () => {
+    const currentProfile = profileRef.current;
+    if (!currentProfile?.user_id || isCompleting) return;
+
+    setIsCompleting(true);
+    
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const reward = rewardPerTaskRef.current;
+      const currentCompleted = completedTodayRef.current;
+      const currentEarnings = todayEarningsRef.current;
+      
+      const newCompleted = currentCompleted + 1;
+      const newEarnings = currentEarnings + reward;
+
+      // Update task_completions
+      const { data: existing } = await supabase
+        .from("task_completions")
+        .select("id")
+        .eq("user_id", currentProfile.user_id)
+        .eq("completed_at", today)
+        .maybeSingle();
+
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from("task_completions")
+          .update({ tasks_completed: newCompleted, earnings: newEarnings })
+          .eq("id", existing.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase.from("task_completions").insert({
+          user_id: currentProfile.user_id,
+          completed_at: today,
+          tasks_completed: newCompleted,
+          earnings: newEarnings,
+        });
+        if (insertError) throw insertError;
+      }
+
+      // Update user profile balances
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          available_balance: (currentProfile.available_balance ?? 0) + reward,
+          total_balance: (currentProfile.total_balance ?? 0) + reward,
+          today_commission: (currentProfile.today_commission ?? 0) + reward,
+          total_revenue: (currentProfile.total_revenue ?? 0) + reward,
+        })
+        .eq("user_id", currentProfile.user_id);
+      
+      if (profileError) throw profileError;
+
+      // Distribute team commissions using the database function
+      await supabase.rpc("distribute_team_commission", {
+        _user_id: currentProfile.user_id,
+        _task_earnings: reward,
+      });
+
+      setCompletedToday(newCompleted);
+      setTodayEarnings(newEarnings);
+      await refreshProfile();
+      toast({ title: "Feladat kész!", description: `+${reward.toFixed(2)} USDT` });
+    } catch (error) {
+      console.error("Task completion error:", error);
+      toast({ title: "Hiba történt", description: "Próbáld újra!", variant: "destructive" });
+    } finally {
+      setIsCompleting(false);
+    }
+  }, [refreshProfile, toast, isCompleting]);
 
   useEffect(() => {
     if (!isWorking) return;
@@ -81,64 +174,7 @@ const Tasks = () => {
       clearInterval(brandInterval);
       clearInterval(progressInterval);
     };
-  }, [isWorking]);
-
-  const handleCompleteTask = async () => {
-    if (!profile?.user_id) return;
-    
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const newCompleted = completedToday + 1;
-      const newEarnings = todayEarnings + rewardPerTask;
-
-      // Update task_completions
-      const { data: existing } = await supabase
-        .from("task_completions")
-        .select("id")
-        .eq("user_id", profile.user_id)
-        .eq("completed_at", today)
-        .maybeSingle();
-
-      if (existing) {
-        await supabase
-          .from("task_completions")
-          .update({ tasks_completed: newCompleted, earnings: newEarnings })
-          .eq("id", existing.id);
-      } else {
-        await supabase.from("task_completions").insert({
-          user_id: profile.user_id,
-          completed_at: today,
-          tasks_completed: newCompleted,
-          earnings: newEarnings,
-        });
-      }
-
-      // Update user profile balances
-      await supabase
-        .from("profiles")
-        .update({
-          available_balance: (profile.available_balance ?? 0) + rewardPerTask,
-          total_balance: (profile.total_balance ?? 0) + rewardPerTask,
-          today_commission: (profile.today_commission ?? 0) + rewardPerTask,
-          total_revenue: (profile.total_revenue ?? 0) + rewardPerTask,
-        })
-        .eq("user_id", profile.user_id);
-
-      // Distribute team commissions using the database function
-      await supabase.rpc("distribute_team_commission", {
-        _user_id: profile.user_id,
-        _task_earnings: rewardPerTask,
-      });
-
-      setCompletedToday(newCompleted);
-      setTodayEarnings(newEarnings);
-      await refreshProfile();
-      toast({ title: "Feladat kész!", description: `+${rewardPerTask.toFixed(2)} USDT` });
-    } catch (error) {
-      console.error("Task completion error:", error);
-      toast({ title: "Hiba történt", variant: "destructive" });
-    }
-  };
+  }, [isWorking, handleCompleteTask]);
 
   const handleStartWork = () => {
     if (completedToday >= maxTasks) {
@@ -156,30 +192,20 @@ const Tasks = () => {
       </div>
 
       <div className="relative z-10 p-4">
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
+        <button
           onClick={() => navigate("/")}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="w-5 h-5" />
           <span>Vissza</span>
-        </motion.button>
-        <motion.h1
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-2xl font-bold text-center mt-4 gradient-text"
-        >
+        </button>
+        <h1 className="text-2xl font-bold text-center mt-4 gradient-text">
           FELADATOK
-        </motion.h1>
+        </h1>
       </div>
 
       {/* Day type indicator */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 px-4 mb-4"
-      >
+      <div className="relative z-10 px-4 mb-4">
         <div
           className={`glass-card p-3 flex items-center justify-center gap-2 ${
             weekend ? "border-amber-500/50" : "border-primary/50"
@@ -193,13 +219,9 @@ const Tasks = () => {
             ({maxTasks} feladat / {rewardPerTask} USDT)
           </span>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 px-4"
-      >
+      <div className="relative z-10 px-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="glass-card p-4 text-center">
             <span className="text-muted-foreground text-sm">Mai kereset</span>
@@ -218,14 +240,9 @@ const Tasks = () => {
             </span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="relative z-10 px-4 mt-4"
-      >
+      <div className="relative z-10 px-4 mt-4">
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="font-semibold">Haladás</span>
@@ -234,9 +251,9 @@ const Tasks = () => {
             </span>
           </div>
           <div className="h-3 bg-secondary rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-primary to-profit"
-              animate={{
+            <div
+              className="h-full bg-gradient-to-r from-primary to-profit transition-all duration-300"
+              style={{
                 width: isWorking
                   ? `${progress}%`
                   : `${(completedToday / maxTasks) * 100}%`,
@@ -272,10 +289,10 @@ const Tasks = () => {
 
           <Button
             onClick={handleStartWork}
-            disabled={isWorking || completedToday >= maxTasks}
+            disabled={isWorking || isCompleting || completedToday >= maxTasks}
             className="w-full mt-6 bg-gradient-to-r from-primary to-cyan-400 text-primary-foreground font-bold py-6 text-lg"
           >
-            {isWorking ? (
+            {isWorking || isCompleting ? (
               "Dolgozik..."
             ) : completedToday >= maxTasks ? (
               <span className="flex items-center gap-2">
@@ -290,15 +307,10 @@ const Tasks = () => {
             )}
           </Button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Expected daily income */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="relative z-10 px-4 mt-4"
-      >
+      <div className="relative z-10 px-4 mt-4">
         <div className="glass-card p-4 bg-gradient-to-r from-profit/10 to-primary/10 border-profit/30">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Várható napi bevétel:</span>
@@ -307,7 +319,7 @@ const Tasks = () => {
             </span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       <BottomNav />
     </div>
