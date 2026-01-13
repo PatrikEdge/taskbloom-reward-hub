@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import {
   Home,
   Award,
@@ -54,45 +53,31 @@ const BottomNav = () => {
   const currentPath = location.pathname;
 
   return (
-    <motion.nav
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.6, duration: 0.5 }}
-      className="fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border/50"
-    >
+    <nav className="fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border/50 z-50">
       <div className="flex items-center justify-around py-2 px-2 max-w-md mx-auto">
         {navItems.map((item) => {
           const isActive = currentPath === item.path;
           return (
-            <motion.button
+            <button
               key={item.label}
               onClick={() => navigate(item.path)}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
               className={`relative flex flex-col items-center gap-1 p-2 rounded-xl transition-colors min-w-[64px] ${
                 isActive
-                  ? "text-cyan-glow"
+                  ? "text-cyan-glow bg-cyan-glow/10"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {isActive && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute inset-0 bg-cyan-glow/10 rounded-xl"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10">
+              <span>
                 {isActive ? item.activeIcon : item.icon}
               </span>
-              <span className="relative z-10 text-[10px] font-medium">
+              <span className="text-[10px] font-medium">
                 {item.label}
               </span>
-            </motion.button>
+            </button>
           );
         })}
       </div>
-    </motion.nav>
+    </nav>
   );
 };
 

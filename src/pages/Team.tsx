@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Users, TrendingUp, Copy, Crown } from "lucide-react";
 import BottomNav from "@/components/dashboard/BottomNav";
@@ -17,11 +16,10 @@ interface TeamMember {
   created_at: string;
 }
 
-interface TeamStats {
-  level1Count: number;
-  level2Count: number;
-  level3Count: number;
-  totalTeam: number;
+interface TeamData {
+  level1: TeamMember[];
+  level2: TeamMember[];
+  level3: TeamMember[];
 }
 
 const Team = () => {
@@ -29,24 +27,29 @@ const Team = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
   const [activeLevel, setActiveLevel] = useState(1);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [teamStats, setTeamStats] = useState<TeamStats>({
-    level1Count: 0,
-    level2Count: 0,
-    level3Count: 0,
-    totalTeam: 0,
+  const [teamData, setTeamData] = useState<TeamData>({
+    level1: [],
+    level2: [],
+    level3: [],
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchTeam = async () => {
-      if (!profile?.id) return;
+  const fetchTeam = useCallback(async () => {
+    if (!profile?.id) {
+      setLoading(false);
+      return;
+    }
 
+    setLoading(true);
+
+    try {
       // Fetch Level 1 team members (direct invitees)
-      const { data: level1 } = await supabase
+      const { data: level1, error: l1Error } = await supabase
         .from("profiles")
         .select("id, email, level, is_vip, total_commission, created_at")
         .eq("invited_by", profile.id);
+
+      if (l1Error) throw l1Error;
 
       const level1Members = (level1 ?? []) as TeamMember[];
       const level1Ids = level1Members.map((m) => m.id);
@@ -54,10 +57,11 @@ const Team = () => {
       // Fetch Level 2 team members
       let level2Members: TeamMember[] = [];
       if (level1Ids.length > 0) {
-        const { data: level2 } = await supabase
+        const { data: level2, error: l2Error } = await supabase
           .from("profiles")
           .select("id, email, level, is_vip, total_commission, created_at")
           .in("invited_by", level1Ids);
+        if (l2Error) throw l2Error;
         level2Members = (level2 ?? []) as TeamMember[];
       }
 
@@ -66,30 +70,29 @@ const Team = () => {
       // Fetch Level 3 team members
       let level3Members: TeamMember[] = [];
       if (level2Ids.length > 0) {
-        const { data: level3 } = await supabase
+        const { data: level3, error: l3Error } = await supabase
           .from("profiles")
           .select("id, email, level, is_vip, total_commission, created_at")
           .in("invited_by", level2Ids);
+        if (l3Error) throw l3Error;
         level3Members = (level3 ?? []) as TeamMember[];
       }
 
-      setTeamStats({
-        level1Count: level1Members.length,
-        level2Count: level2Members.length,
-        level3Count: level3Members.length,
-        totalTeam: level1Members.length + level2Members.length + level3Members.length,
+      setTeamData({
+        level1: level1Members,
+        level2: level2Members,
+        level3: level3Members,
       });
-
-      // Set members based on active level
-      if (activeLevel === 1) setTeamMembers(level1Members);
-      else if (activeLevel === 2) setTeamMembers(level2Members);
-      else setTeamMembers(level3Members);
-
+    } catch (error) {
+      console.error("Error fetching team:", error);
+    } finally {
       setLoading(false);
-    };
+    }
+  }, [profile?.id]);
 
+  useEffect(() => {
     fetchTeam();
-  }, [profile?.id, activeLevel]);
+  }, [fetchTeam]);
 
   const copyInviteCode = () => {
     if (profile?.invite_code) {
@@ -107,6 +110,21 @@ const Team = () => {
     return COMMISSION_RATES.level3 * 100;
   };
 
+  const getCurrentMembers = () => {
+    if (activeLevel === 1) return teamData.level1;
+    if (activeLevel === 2) return teamData.level2;
+    return teamData.level3;
+  };
+
+  const teamStats = {
+    level1Count: teamData.level1.length,
+    level2Count: teamData.level2.length,
+    level3Count: teamData.level3.length,
+    totalTeam: teamData.level1.length + teamData.level2.length + teamData.level3.length,
+  };
+
+  const teamMembers = getCurrentMembers();
+
   return (
     <div className="min-h-screen bg-background max-w-md mx-auto relative overflow-hidden pb-24">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -115,14 +133,12 @@ const Team = () => {
 
       <div className="relative z-10 p-4">
         <div className="flex items-center justify-between">
-          <motion.button
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+          <button
             onClick={() => navigate("/")}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft className="w-5 h-5" />
-          </motion.button>
+          </button>
           <h1 className="text-xl font-bold">Csapatom</h1>
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
             <Users className="w-5 h-5 text-white" />
@@ -131,37 +147,28 @@ const Team = () => {
       </div>
 
       {/* Invite code banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 px-4 mb-4"
-      >
+      <div className="relative z-10 px-4 mb-4">
         <div className="glass-card p-4 bg-gradient-to-r from-primary/20 to-profit/20 border-primary/30">
           <div className="flex items-center justify-between">
             <div>
               <span className="text-sm text-muted-foreground">Meghívó kódod:</span>
               <p className="text-xl font-mono font-bold text-foreground">
-                {profile?.invite_code ?? "..."}
+                {profile?.invite_code || "Nincs"}
               </p>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+            <button
               onClick={copyInviteCode}
-              className="p-3 rounded-lg bg-primary/20 hover:bg-primary/30 transition-colors"
+              disabled={!profile?.invite_code}
+              className="p-3 rounded-lg bg-primary/20 hover:bg-primary/30 transition-colors disabled:opacity-50"
             >
               <Copy className="w-5 h-5 text-primary" />
-            </motion.button>
+            </button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Commission stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 px-4"
-      >
+      <div className="relative z-10 px-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="glass-card p-4 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
@@ -198,15 +205,10 @@ const Team = () => {
             <span className="text-lg font-bold text-foreground">{teamStats.totalTeam}</span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Level tabs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="relative z-10 px-4 mt-4"
-      >
+      <div className="relative z-10 px-4 mt-4">
         <div className="flex gap-2">
           {[1, 2, 3].map((level) => (
             <button
@@ -230,20 +232,16 @@ const Team = () => {
         <p className="text-center text-xs text-muted-foreground mt-2">
           {getCommissionRate(activeLevel)}% jutalék az {activeLevel}. szintű meghívottaktól
         </p>
-      </motion.div>
+      </div>
 
       {/* Team members list */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="relative z-10 px-4 mt-4"
-      >
+      <div className="relative z-10 px-4 mt-4">
         <h3 className="text-sm font-semibold text-muted-foreground mb-3">
           {activeLevel}. szintű meghívottak
         </h3>
         {loading ? (
           <div className="glass-card p-8 text-center">
+            <div className="w-8 h-8 mx-auto mb-3 rounded-full border-2 border-primary border-t-transparent animate-spin" />
             <p className="text-muted-foreground">Betöltés...</p>
           </div>
         ) : teamMembers.length === 0 ? (
@@ -298,7 +296,7 @@ const Team = () => {
             ))}
           </div>
         )}
-      </motion.div>
+      </div>
 
       <BottomNav />
     </div>

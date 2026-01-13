@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/dashboard/Header";
 import BalanceCard from "@/components/dashboard/BalanceCard";
 import BottomNav from "@/components/dashboard/BottomNav";
-import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, ArrowDownCircle, ArrowUpCircle, Shield } from "lucide-react";
@@ -37,31 +36,8 @@ const Profile = () => {
     <div className="min-h-screen bg-background max-w-md mx-auto relative overflow-hidden">
       {/* Background gradient effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{
-            opacity: [0.3, 0.5, 0.3],
-            scale: [1, 1.1, 1],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-cyan-glow/10 blur-3xl"
-        />
-        <motion.div
-          animate={{
-            opacity: [0.2, 0.4, 0.2],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2,
-          }}
-          className="absolute -bottom-20 -left-40 w-80 h-80 rounded-full bg-profit/10 blur-3xl"
-        />
+        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-cyan-glow/10 blur-3xl" />
+        <div className="absolute -bottom-20 -left-40 w-80 h-80 rounded-full bg-profit/10 blur-3xl" />
       </div>
 
       {/* Content */}
@@ -78,12 +54,7 @@ const Profile = () => {
         />
         
         {/* Action buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="mx-4 mb-4 grid grid-cols-2 gap-3"
-        >
+        <div className="mx-4 mb-4 grid grid-cols-2 gap-3">
           <Button
             onClick={() => navigate("/deposit")}
             className="bg-gradient-to-r from-primary to-cyan-400 text-primary-foreground font-bold py-6"
@@ -98,16 +69,11 @@ const Profile = () => {
             <ArrowUpCircle className="w-5 h-5 mr-2" />
             Kivétel
           </Button>
-        </motion.div>
+        </div>
 
         {/* Admin button */}
         {isAdmin && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.5 }}
-            className="mx-4 mb-4"
-          >
+          <div className="mx-4 mb-4">
             <Button
               variant="outline"
               className="w-full border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
@@ -116,16 +82,11 @@ const Profile = () => {
               <Shield className="w-4 h-4 mr-2" />
               Admin Panel
             </Button>
-          </motion.div>
+          </div>
         )}
         
         {/* Logout button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
-          className="mx-4"
-        >
+        <div className="mx-4">
           <Button
             variant="outline"
             className="w-full"
@@ -134,7 +95,7 @@ const Profile = () => {
             <LogOut className="w-4 h-4 mr-2" />
             Kijelentkezés
           </Button>
-        </motion.div>
+        </div>
       </div>
 
       <BottomNav />
