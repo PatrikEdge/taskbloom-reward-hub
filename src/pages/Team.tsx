@@ -12,7 +12,6 @@ interface TeamMember {
   email: string | null;
   level: number;
   is_vip: boolean;
-  total_commission: number;
   created_at: string;
 }
 
@@ -43,10 +42,10 @@ const Team = () => {
     setLoading(true);
 
     try {
-      // Fetch Level 1 team members (direct invitees)
+      // Fetch Level 1 team members (direct invitees) - using secure view
       const { data: level1, error: l1Error } = await supabase
-        .from("profiles")
-        .select("id, email, level, is_vip, total_commission, created_at")
+        .from("team_members_public")
+        .select("id, email, level, is_vip, created_at")
         .eq("invited_by", profile.id);
 
       if (l1Error) throw l1Error;
@@ -58,8 +57,8 @@ const Team = () => {
       let level2Members: TeamMember[] = [];
       if (level1Ids.length > 0) {
         const { data: level2, error: l2Error } = await supabase
-          .from("profiles")
-          .select("id, email, level, is_vip, total_commission, created_at")
+          .from("team_members_public")
+          .select("id, email, level, is_vip, created_at")
           .in("invited_by", level1Ids);
         if (l2Error) throw l2Error;
         level2Members = (level2 ?? []) as TeamMember[];
@@ -71,8 +70,8 @@ const Team = () => {
       let level3Members: TeamMember[] = [];
       if (level2Ids.length > 0) {
         const { data: level3, error: l3Error } = await supabase
-          .from("profiles")
-          .select("id, email, level, is_vip, total_commission, created_at")
+          .from("team_members_public")
+          .select("id, email, level, is_vip, created_at")
           .in("invited_by", level2Ids);
         if (l3Error) throw l3Error;
         level3Members = (level3 ?? []) as TeamMember[];
@@ -287,9 +286,6 @@ const Team = () => {
                   <p className="text-sm font-semibold text-primary">
                     {member.is_vip ? "sLV" : "LV"}
                     {member.level}
-                  </p>
-                  <p className="text-xs text-profit">
-                    +{member.total_commission.toFixed(2)} USDT
                   </p>
                 </div>
               </div>

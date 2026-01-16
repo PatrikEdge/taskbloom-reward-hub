@@ -89,6 +89,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profiles_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       task_completions: {
@@ -177,7 +184,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      team_members_public: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string | null
+          invite_code: string | null
+          invited_by: string | null
+          is_vip: boolean | null
+          level: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string | null
+          invite_code?: string | null
+          invited_by?: string | null
+          is_vip?: boolean | null
+          level?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string | null
+          invite_code?: string | null
+          invited_by?: string | null
+          is_vip?: boolean | null
+          level?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       check_vip_eligibility: { Args: { _user_id: string }; Returns: boolean }
