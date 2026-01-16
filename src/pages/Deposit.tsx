@@ -1,60 +1,18 @@
-import { motion } from "framer-motion";
 import { ChevronLeft, Copy, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/dashboard/BottomNav";
 
 // Company wallet address for deposits
-const DEPOSIT_WALLET = "TRC20: TXyz1234567890AbCdEfGhIjKlMnOpQrS";
+const DEPOSIT_WALLET = "TXyz1234567890AbCdEfGhIjKlMnOpQrS";
 
 const Deposit = () => {
   const navigate = useNavigate();
-  const { profile, refreshProfile } = useAuth();
   const { toast } = useToast();
-  const [amount, setAmount] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const copyWallet = () => {
-    navigator.clipboard.writeText(DEPOSIT_WALLET.replace("TRC20: ", ""));
+    navigator.clipboard.writeText(DEPOSIT_WALLET);
     toast({ title: "Másolva!", description: "A tárca cím a vágólapra került" });
-  };
-
-  const handleDeposit = async () => {
-    if (!profile?.user_id) return;
-    const numAmount = parseFloat(amount);
-    
-    if (isNaN(numAmount) || numAmount <= 0) {
-      toast({ title: "Hibás összeg", variant: "destructive" });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error } = await supabase.from("transactions").insert({
-        user_id: profile.user_id,
-        type: "deposit",
-        amount: numAmount,
-        wallet_address: DEPOSIT_WALLET,
-      });
-
-      if (error) throw error;
-
-      toast({ 
-        title: "Befizetés elküldve!", 
-        description: "Kérelem feldolgozás alatt. Az admin jóváhagyása után jóváírásra kerül." 
-      });
-      setAmount("");
-      await refreshProfile();
-    } catch (error: any) {
-      toast({ title: "Hiba", description: error.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -64,30 +22,20 @@ const Deposit = () => {
       </div>
 
       <div className="relative z-10 p-4">
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
+        <button
           onClick={() => navigate("/profile")}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="w-5 h-5" />
           <span>Vissza</span>
-        </motion.button>
+        </button>
         
-        <motion.h1
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-2xl font-bold text-center mt-4 gradient-text"
-        >
+        <h1 className="text-2xl font-bold text-center mt-4 gradient-text">
           BEFIZETÉS
-        </motion.h1>
+        </h1>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 px-4 space-y-4"
-      >
+      <div className="relative z-10 px-4 space-y-4">
         {/* Wallet address card */}
         <div className="glass-card p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -98,45 +46,16 @@ const Deposit = () => {
             <code className="text-sm text-foreground break-all">
               {DEPOSIT_WALLET}
             </code>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+            <button
               onClick={copyWallet}
               className="p-2 hover:bg-secondary rounded-lg ml-2 flex-shrink-0"
             >
               <Copy className="w-4 h-4 text-primary" />
-            </motion.button>
+            </button>
           </div>
           <p className="text-sm text-muted-foreground mt-3">
-            Küldje el a USDT-t erre a címre, majd adja meg az összeget alább.
+            Küldje el a USDT-t erre a címre. A befizetés automatikusan jóváírásra kerül az admin jóváhagyása után.
           </p>
-        </div>
-
-        {/* Amount input */}
-        <div className="glass-card p-4">
-          <label className="block text-sm font-medium mb-2">Befizetett összeg (USDT)</label>
-          <Input
-            type="number"
-            placeholder="0.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="text-lg"
-          />
-          
-          {/* Quick amounts */}
-          <div className="flex gap-2 mt-3">
-            {[100, 500, 1000, 3000].map((val) => (
-              <Button
-                key={val}
-                variant="outline"
-                size="sm"
-                onClick={() => setAmount(val.toString())}
-                className="flex-1"
-              >
-                ${val}
-              </Button>
-            ))}
-          </div>
         </div>
 
         {/* Level info */}
@@ -162,14 +81,12 @@ const Deposit = () => {
           </div>
         </div>
 
-        <Button
-          onClick={handleDeposit}
-          disabled={loading || !amount}
-          className="w-full bg-gradient-to-r from-primary to-cyan-400 text-primary-foreground font-bold py-6 text-lg"
-        >
-          {loading ? "Feldolgozás..." : "Befizetés kérelem"}
-        </Button>
-      </motion.div>
+        <div className="glass-card p-4 bg-amber-500/10 border-amber-500/30">
+          <p className="text-sm text-center text-amber-400">
+            ⚠️ Csak USDT TRC20 hálózaton fogadunk befizetést!
+          </p>
+        </div>
+      </div>
 
       <BottomNav />
     </div>

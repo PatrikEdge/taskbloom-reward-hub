@@ -1,5 +1,4 @@
 import { Bell, Copy, Crown } from "lucide-react";
-import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -59,12 +58,7 @@ const Header = () => {
   };
 
   return (
-    <motion.header
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="px-4 pt-4 pb-2"
-    >
+    <header className="px-4 pt-4 pb-2">
       {/* Top bar */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -73,23 +67,14 @@ const Header = () => {
           </div>
           <span className="text-xl font-bold text-foreground">WTQ Mining</span>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          className="relative p-2 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-        >
+        <button className="relative p-2 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors">
           <Bell className="w-5 h-5 text-muted-foreground" />
           <span className="absolute top-1 right-1 w-2 h-2 bg-profit rounded-full" />
-        </motion.button>
+        </button>
       </div>
 
       {/* Profile section */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.1, duration: 0.4 }}
-        className="glass-card p-4"
-      >
+      <div className="glass-card p-4">
         <div className="flex items-center gap-4">
           <div className="relative">
             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-glow to-primary p-0.5">
@@ -108,7 +93,7 @@ const Header = () => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-lg font-semibold text-foreground truncate max-w-[140px]">
-                {profile?.email || "Betöltés..."}
+                {profile?.email ?? "..."}
               </span>
               <span className="text-muted-foreground">→</span>
               <span className={`font-semibold flex items-center gap-1 flex-shrink-0 ${isVip ? "text-amber-400" : "text-profit"}`}>
@@ -119,17 +104,15 @@ const Header = () => {
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm text-muted-foreground">Meghívó kód:</span>
               <span className="text-sm text-foreground font-mono">
-                {profile?.invite_code || "Betöltés..."}
+                {profile?.invite_code ?? "..."}
               </span>
               {profile?.invite_code && (
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                <button
                   onClick={copyInviteCode}
                   className="p-1 hover:bg-secondary rounded"
                 >
                   <Copy className="w-3.5 h-3.5 text-cyan-glow" />
-                </motion.button>
+                </button>
               )}
             </div>
           </div>
@@ -145,8 +128,8 @@ const Header = () => {
             </span>
           </p>
         </div>
-      </motion.div>
-    </motion.header>
+      </div>
+    </header>
   );
 };
 

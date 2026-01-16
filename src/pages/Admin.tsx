@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, Users, ArrowDownCircle, ArrowUpCircle, CheckCircle, XCircle, Crown, ChevronDown, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,13 +33,9 @@ interface UserProfile {
   created_at: string;
 }
 
-interface TeamMember extends UserProfile {
-  children?: TeamMember[];
-}
-
 const Admin = () => {
   const navigate = useNavigate();
-  const { profile, user } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -49,28 +44,7 @@ const Admin = () => {
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [teamStructure, setTeamStructure] = useState<Map<string, UserProfile[]>>(new Map());
 
-  useEffect(() => {
-    checkAdmin();
-  }, [user]);
-
-  const checkAdmin = async () => {
-    if (!user) return;
-    
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
-    
-    if (data) {
-      setIsAdmin(true);
-      await Promise.all([fetchTransactions(), fetchUsers()]);
-    }
-    setLoading(false);
-  };
-
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     const { data: txData } = await supabase
       .from("transactions")
       .select("*")
@@ -90,9 +64,9 @@ const Admin = () => {
       );
       setTransactions(txWithEmails as Transaction[]);
     }
-  };
+  }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     const { data } = await supabase
       .from("profiles")
       .select("*")
@@ -112,7 +86,53 @@ const Admin = () => {
       });
       setTeamStructure(structure);
     }
-  };
+  }, []);
+
+  const checkAdmin = useCallback(async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    
+    if (data) {
+      setIsAdmin(true);
+      await Promise.all([fetchTransactions(), fetchUsers()]);
+    }
+    setLoading(false);
+  }, [user, fetchTransactions, fetchUsers]);
+
+  useEffect(() => {
+    checkAdmin();
+  }, [checkAdmin]);
+
+  // Real-time subscription for transactions
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const channel = supabase
+      .channel('admin-transactions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions'
+        },
+        () => {
+          // Refresh transactions when any change occurs
+          fetchTransactions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin, fetchTransactions]);
 
   const processTransaction = async (txId: string, type: "deposit" | "withdrawal", approved: boolean) => {
     try {
@@ -212,23 +232,17 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto p-4">
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
+        <button
           onClick={() => navigate("/")}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4"
         >
           <ChevronLeft className="w-5 h-5" />
           <span>Vissza</span>
-        </motion.button>
+        </button>
 
-        <motion.h1
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-bold gradient-text mb-6"
-        >
+        <h1 className="text-3xl font-bold gradient-text mb-6">
           ADMIN PANEL
-        </motion.h1>
+        </h1>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
